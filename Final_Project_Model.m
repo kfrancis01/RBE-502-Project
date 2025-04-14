@@ -175,7 +175,7 @@ text(P1_num(1), P1_num(2), '  Joint1', 'FontSize',12);
 text(P2_num(1), P2_num(2), '  Joint2', 'FontSize',12);
 text(P3_num(1), P3_num(2), '  EE', 'FontSize',12);
 
-%% 3. (Optional) Define DH parameters for a generic planar robot
+%% 3. Define DH parameters for a generic planar robot
 % For a planar 3-link robot (using standard DH conventions):
 DH = [ q1, 0, L1, 0;
        q2, 0, L2, 0;
@@ -186,7 +186,6 @@ DHmatrix = @(theta, d, a, alpha) [ cos(theta), -sin(theta)*cos(alpha), sin(theta
                                     sin(theta),  cos(theta)*cos(alpha), -cos(theta)*sin(alpha), a*sin(theta);
                                     0,           sin(alpha),             cos(alpha),            d;
                                     0,           0,                      0,                     1];
-% (You may use this section to derive symbolic forward kinematics if needed.)
 
 %% 4. Forward Kinematics using the mdl_planar3 model
 % Define a numeric joint configuration.
@@ -202,7 +201,7 @@ disp(T_num);
 %% 5. Plot the Robot
 figure;
 p3.plot(q_num);              % Plot the robot at the configuration q
-title('Planar 3-Link Robot Arm (mdl\_planar3)');
+title('Planar 3-Link Robot Arm (mdl_planar3)');
 axis equal;
 
 %% 2. Simulation and Control Parameters
@@ -212,10 +211,10 @@ tspan = [0 5];  % in seconds
 
 % Initial joint configuration [q1, q2, q3] (in radians)
 q0 = deg2rad([30, 45, -30]);  
-% Initial joint velocities (assumed zero):
+% Initial joint velocities:
 dq0 = [0, 0, 0];
 % Assemble the state vector x = [q1; q2; q3; dq1; dq2; dq3]
-x0 = [q0, dq0].';  % convert to a column vector (6x1)
+x0 = [q0, dq0].';  % convert to a column vector
 
 % Control gains:
 Kp = diag([100, 100, 100]);
@@ -256,7 +255,6 @@ legend('q1','q2','q3'); title('Joint Trajectories under PD + Feedforward Control
 grid on;
 
 %% 4. Animate the Robot Moving Along the Trajectory
-% The plot() method of the SerialLink object can be used to animate the robot.
 figure;
 p3.plot(qtraj);
 title('Motion of mdl\_planar3 from Initial to Desired Configuration');
