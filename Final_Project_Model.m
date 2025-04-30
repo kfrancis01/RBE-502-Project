@@ -40,7 +40,7 @@ dq  = [dq1; dq2; dq3];
 %
 % We construct a 3x4 matrix for the DH parameters:
 % Each row: [theta, d, a, alpha]
-DH = [ q1,   0, L1, 0;
+DH = [ q1,   0, L1, pi/2;
        q2,   0, L2, 0;
        q3,   0, L3, 0];
 
@@ -177,7 +177,7 @@ text(P3_num(1), P3_num(2), '  EE', 'FontSize',12);
 
 %% 3. Define DH parameters for a generic planar robot
 % For a planar 3-link robot (using standard DH conventions):
-DH = [ q1, 0, L1, 0;
+DH = [ q1, 0, L1, pi/2;
        q2, 0, L2, 0;
        q3, 0, L3, 0];
 
@@ -190,7 +190,7 @@ DHmatrix = @(theta, d, a, alpha) [ cos(theta), -sin(theta)*cos(alpha), sin(theta
 %% 4. Forward Kinematics using the mdl_planar3 model
 % Define a numeric joint configuration.
 % (Remember: Peter Corke’s SerialLink plot() method requires a numeric row vector.)
-q_deg = [30, 45, -30];  % Joint angles in degrees
+q_deg = [-180, 45, -30];  % Joint angles in degrees
 q_num = deg2rad(q_deg);  % Convert to radians (resulting in a row vector)
 
 % Compute the forward kinematics transformation matrix at q_numeric:
@@ -255,9 +255,32 @@ legend('q1','q2','q3'); title('Joint Trajectories under PD + Feedforward Control
 grid on;
 
 %% 4. Animate the Robot Moving Along the Trajectory
-figure;
-p3.plot(qtraj);
+p3.links(1).alpha = -pi/2;   % rotate joint 1-s axis into the XY plane
+% p3.update;                  % recompute internal A-matrices
+
+figure; 
+hold on; 
+
+% target location
+xt = 2;   % change to your desired X‐coordinate (m)
+yt = 0.0;   % change to your desired Y‐coordinate (m)
+zt = -3;
+% 1) Simple large X marker:
+% plot3(xt, yt, zt, 'kx', 'MarkerSize', 25, 'LineWidth', 3);
+
+% OR, if you want a little cross of lines instead of the marker symbol:
+L = 0.5;  % length of arm of the cross (m)
+
+% arm along X
+plot3([xt-L, xt+L], [yt,    yt   ], [zt, zt], 'k-', 'LineWidth',2);
+
+% arm along Y
+plot3([xt,    xt   ], [yt-L, yt+L], [zt, zt], 'k-', 'LineWidth',2);
+
+% Robot Arm
+p3.plot(qtraj,'delay',0.2,'floorlevel', 0 );
 title('Motion of mdl\_planar3 from Initial to Desired Configuration');
+
 
 %% 5. Compute and Plot End-Effector Trajectory
 % Preallocate array for end-effector (EE) positions (x-y in meters)
