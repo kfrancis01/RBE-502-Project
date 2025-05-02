@@ -1,17 +1,32 @@
 %% mdl_planar3_DH_Dynamics_Plot.m
-% This script demonstrates:
-%   1. Setting up the DH parameters for a 3-link planar robot.
-%   2. Deriving a simple dynamic model using Lagrange’s method.
-%   3. Computing the forward kinematics and plotting the arm.
+%{
+
+Steps for deriving the end effector trajectory for a 3-link planar robot
+  1. Setting up the DH parameters for a 3-link planar robot.
+  2. Deriving a simple dynamic model using Lagrange’s method.
+  3. Computing the forward kinematics and plotting the arm.
+
+%}
 
 clear; close all; clc;
 
 %% 1. Load the mdl_planar3 Model
 % This command (from Peter Corke’s Toolbox) creates a SerialLink object called 'planar3'
 mdl_planar3;  
+% Configure DH parameters
+p3.links(1).d = 0.5;
+p3.links(1).alpha = -pi/2;
+p3.links(2).a = 0.5;
+p3.links(3).a = 0.2;
+% grab the link‐parameters into vectors
+theta = rad2deg([p3.offset(:)]);
+d     = [p3.links.d].';
+a     = [p3.links.a].';
+alpha = [p3.links.alpha].';
+DH = table(theta, d, a, alpha,'VariableNames',{'theta','d','a','alpha'}, 'RowNames', {'L1';'L2';'L3'});
 % Display the DH parameters (the SerialLink object stores its DH table in the A property)
 disp('DH Parameters for mdl_planar3:');
-disp(p3);
+disp(DH);
 
 %% 1. Define symbolic variables
 
@@ -31,15 +46,17 @@ q   = [q1; q2; q3];
 dq  = [dq1; dq2; dq3];
 
 %% 2. Denavit–Hartenberg Parameters for a 3-Link Planar Robot
-% For a planar robot (all motion in the x-y plane):
-% Choose standard DH with:
-%  - d_i = 0 (no offset along z)
-%  - alpha_i = 0 (no twist)
-%  - a_i = link length (L1, L2, L3)
-%  - theta_i = joint variable (q1, q2, q3)
-%
-% We construct a 3x4 matrix for the DH parameters:
-% Each row: [theta, d, a, alpha]
+%{
+ For a planar robot (all motion in the x-y plane):
+Choose standard DH with:
+ - d_i = 0 (no offset along z)
+ - alpha_i = 0 (no twist)
+ - a_i = link length (L1, L2, L3)
+ - theta_i = joint variable (q1, q2, q3)
+
+Construct a 3x4 matrix for the DH parameters:
+Each row: [theta, d, a, alpha]
+%}
 DH = [ q1,   0, L1, pi/2;
        q2,   0, L2, 0;
        q3,   0, L3, 0];
@@ -67,8 +84,8 @@ disp('Symbolic End-Effector Position:');
 pretty(P_end);
 
 %% 4. Dynamic Model via Lagrangian Method
-% For simplicity, assume that each link’s mass is concentrated at its midpoint.
-% The center of mass for link i is assumed to lie halfway along the link.
+% Assume that each link’s mass is concentrated at its midpoint.
+% Assumed center of mass is halfway along the link.
 % (We ignore rotational inertias for this example.)
 
 % Position of center of mass for each link (in base frame):
@@ -94,13 +111,13 @@ v1 = simplify(J1 * dq);
 v2 = simplify(J2 * dq);
 v3 = simplify(J3 * dq);
 
-% Kinetic energy for each link (translational only):
+% Kinetic energy for each link:
 K1 = (1/2) * m1 * (v1.' * v1);
 K2 = (1/2) * m2 * (v2.' * v2);
 K3 = (1/2) * m3 * (v3.' * v3);
 K_total = simplify(K1 + K2 + K3);
 
-% Potential energy for each link (assume gravity acts in negative y direction)
+% Potential energy for each link
 % For a planar arm lying in the horizontal plane, you might set U = 0.
 % Here, we assume the arm is vertical so that height is given by the y-coordinate.
 U1 = m1 * g * (L1/2 * sin(q1));
@@ -124,12 +141,10 @@ dL_ddq = [diff(Lagr, dq1);
            diff(Lagr, dq2);
            diff(Lagr, dq3)];
        
-disp('Partial derivative dL/dq:');
-pretty(dL_dq);
-disp('Partial derivative dL/ddq:');
-pretty(dL_ddq);
-
-% (A full dynamic model would include time derivatives of dL/ddq to compute tau.)
+% disp('Partial derivative dL/dq:');
+% pretty(dL_dq);
+% disp('Partial derivative dL/ddq:');
+% pretty(dL_ddq);
 
 %% 5. Numerical Substitution and Plotting the Robot Arm
 % Provide numerical values for the parameters:
@@ -165,9 +180,9 @@ plot([P0(1) P1_num(1)], [P0(2) P1_num(2)], 'ro-', 'LineWidth', 2);
 plot([P1_num(1) P2_num(1)], [P1_num(2) P2_num(2)], 'go-', 'LineWidth', 2);
 plot([P2_num(1) P3_num(1)], [P2_num(2) P3_num(2)], 'bo-', 'LineWidth', 2);
 xlabel('X (m)'); ylabel('Y (m)');
-title('3-Link Planar Robot Arm (mdl\_planar3)');
+title('3-Link Planar Robot Arm (mdl_planar3)');
 
-% Optionally, label the joints:
+% Lable the joints:
 text(P0(1), P0(2), '  Base', 'FontSize',12);
 text(P1_num(1), P1_num(2), '  Joint1', 'FontSize',12);
 text(P2_num(1), P2_num(2), '  Joint2', 'FontSize',12);
@@ -188,17 +203,16 @@ DHmatrix = @(theta, d, a, alpha) [ cos(theta), -sin(theta)*cos(alpha), sin(theta
 %% 4. Forward Kinematics using the mdl_planar3 model
 % Define a numeric joint configuration.
 % (Remember: Peter Corke’s SerialLink plot() method requires a numeric row vector.)
-q_deg = [-180, 45, -30];  % Joint angles in degrees
-q_num = deg2rad(q_deg);  % Convert to radians (resulting in a row vector)
+q_rad = deg2rad([-180, 20, -10]);  % Joint angles in degrees
 
 % Compute the forward kinematics transformation matrix at q_numeric:
-T_num = p3.fkine(q_num);
+T_num = p3.fkine(q_rad);
 disp('Forward Kinematics Transformation T (numeric):');
 disp(T_num);
 
 %% 5. Plot the Robot
 figure;
-p3.plot(q_num);              % Plot the robot at the configuration q
+p3.plot(q_rad);              % Plot the robot at the configuration q
 title('Planar 3-Link Robot Arm (mdl_planar3)');
 axis equal;
 
@@ -208,7 +222,8 @@ axis equal;
 tspan = [0 5];  % in seconds
 
 % Initial joint configuration [q1, q2, q3] (in radians)
-q0 = deg2rad([30, 45, -30]);  
+% q0 = deg2rad([30, 45, -30]);  
+q0 = deg2rad([0, -45, 90]);
 % Initial joint velocities:
 dq0 = [0, 0, 0];
 % Assemble the state vector x = [q1; q2; q3; dq1; dq2; dq3]
@@ -219,9 +234,10 @@ Kp = diag([100, 100, 100]);
 Kv = diag([20, 20, 20]);
 
 % Desired joint configuration (constant desired position, in radians):
-q_des = deg2rad([pi/2, 45, -45]).';   % column vector (3x1)
+% q_des = deg2rad([pi/2, -pi*2, -45]).';   % column vector (3x1)
+q_des = deg2rad([0, -30, 10]).';
 dq_des = zeros(3,1);
-ddq_des = zeros(3,1);  % no feedforward acceleration in this example
+ddq_des = zeros(3,1); 
 
 % Store gains and desired signals in global variables:
 global Kp_global Kv_global q_des_global dq_des_global ddq_des_global
@@ -231,9 +247,6 @@ q_des_global = q_des;
 dq_des_global = dq_des;
 ddq_des_global = ddq_des;
 
-% ODE solver options:
-options = odeset('RelTol', 1e-4, 'AbsTol', 1e-6);
-
 %% 3. Generate a Joint-Space Trajectory
 % Use jtraj to generate a smooth trajectory between q0 and qf.
 % Let the movement take 5 seconds with 50 time steps.
@@ -241,10 +254,10 @@ options = odeset('RelTol', 1e-4, 'AbsTol', 1e-6);
 tf = 20;
 qf_deg = [45, 45, 45];      % Desired final joint angles (degrees)
 qf = deg2rad(qf_deg);       % Convert to radians
-qtraj = jtraj(q0, qf, [0 tf]);   % qtraj is a 50x3 matrix
+qtraj = jtraj(q0, q_des, [0 tf]);   % qtraj is a 50x3 matrix
 
 %% 3. Simulate the Closed-Loop System Using ODE45
-[T, X] = ode45(@(t,x)planarArmODE(t,x,p3,2), [0 tf], x0, options);
+[T, X] = ode45(@(t,x)planarArmODE(t,x,p3,2), [0 tf], x0);
 
 %% 4. Plot Joint Trajectories
 figure;
@@ -254,9 +267,6 @@ legend('q1','q2','q3'); title('Joint Trajectories under PD + Feedforward Control
 grid on;
 
 %% 4. Animate the Robot Moving Along the Trajectory
-p3.links(1).alpha = -pi/2;   % rotate joint 1-s axis into the XY plane
-% p3.update;                  % recompute internal A-matrices
-
 figure; 
 hold on; 
 
@@ -274,11 +284,11 @@ L = 0.5;  % length of arm of the cross (m)
 plot3([xt-L, xt+L], [yt,    yt   ], [zt, zt], 'k-', 'LineWidth',2);
 
 % arm along Y
-plot3([xt,    xt   ], [yt-L, yt+L], [zt, zt], 'k-', 'LineWidth',2);
+plot3([xt,xt ], [yt-L, yt+L], [zt, zt], 'k-', 'LineWidth',2);
 
 % Robot Arm
 p3.plot(qtraj,'delay',0.2 );
-title('Motion of mdl\_planar3 from Initial to Desired Configuration');
+title('Motion of mdl_planar3 from Initial to Desired Configuration');
 
 
 %% 5. Compute and Plot End-Effector Trajectory
@@ -287,6 +297,13 @@ ee_traj = zeros(length(X), 3);
 x = zeros(length(X), 1);
 y = zeros(length(X), 1);
 z = zeros(length(X), 1);
+% ee_des = zeros(size(qtraj)); 
+ee_des = zeros(length(X), 3);
+for i = 1:size(qtraj,1)
+   pos_des = p3.fkine(qtraj(i,:));  
+   ee_des(i,:) = pos_des.t; 
+end
+
 for i = 1:length(T)
     % Extract the current joint configuration
     % q_current = X(i,1:3)
@@ -312,26 +329,31 @@ ylabel('Y (m)');
 zlabel('Z (m)');
 title('End-Effector Trajectory (3D)');
 
+figure;
+plot(x,z,'g-', 'LineWidth', 2);
+xlabel('X (m)');
+ylabel('Z (m)');
+title('End-Effector Trajectory (XZ plane)');
 
 % 2D planar plot:
 figure;
 hold on
-plot( x, y, 'g-', 'LineWidth', 2 );
-
+plot( x, z, 'g-', 'LineWidth', 2 );
+plot( ee_des(:,1), ee_des(:,3), 'b-.','LineWidth',2 );
 xlabel('X (m)');
-ylabel('Y (m)');
-title('End-Effector Trajectory (XY plane)');
+ylabel('Z (m)');
+title('End-Effector Trajectory (XZ plane)');
 
 
 %% 6. Launch Projectile
 % load('ballPose.mat','ball_at_release','pose');
 
 releaseAngle = qtraj(end,1);     
-eeT = p3.fkine(qtraj(end,:));                         
-% releaseX = eeT.t(1) + x(end);    
-% releaseY = eeT.t(2) + y(end);
+eeT = p3.fkine(qtraj(end,:));    
 releaseX = ee_traj(end,1)
 releaseY = ee_traj(end,2);
+releaseXv = qtraj(end,1);
+releaseYv = qtraj(end,2);
 
 
 % call your ball functions
@@ -365,34 +387,17 @@ axis equal;
 grid on;
 hold on;
 xlabel('X Position');
-ylabel('Y Position');
+ylabel('Z Position');
 title('Ball Trajectory');
-plot(cup_x, cup_y, 'x', 'Color', 'r', 'MarkerSize', 10);
-plot(cup_front, cup_y, '|', 'Color', 'k', 'MarkerSize', 10);
-plot(cup_back, cup_y, '|', 'Color', 'k', 'MarkerSize', 10);
 
-% num_points = 0;
-% for i = 1:length(pose(:, 2))
-%     if num_points < 1
-%         % if any of our y vals are zero then plot a point max of 2 points
-% 
-%         if (pose(i,2) <= cup_y)
-%             x_on_target = tolerance(pose(i,1), cup_x, cup_radius);
-%             if x_on_target
-%                 plot(pose(i,1), pose(i,2), 'ro', 'MarkerSize', 3, 'MarkerFaceColor', 'r');
-%                 num_points = num_points + 1;
-%             end
-%         end
-%     end
-% end
-% save('ballPose.mat','ball_at_release','pose','ee_traj');
-
-proj = ball_traj(releaseX, releaseY, xv, yv, 3);
+proj = ball_traj(releaseX, releaseY, releaseXv, releaseYv, 3);
 
 % figure;
 plot(proj(:,1), proj(:,2),'r--','LineWidth',2);
-xlabel('X (m)'); ylabel('Y (m)');
-title('EE and Projectile Trajectory (XY Plane)')
+% plot(proj(:,1), proj(:,3),'r--','LineWidth',2);
+legend('Actual','Desired','Projectile');
+% xlabel('X (m)'); ylabel('Y (m)');
+title('EE and Projectile Trajectory (XZ Plane)')
 % plot3( ballPose(:,1), ballPose(:,2), zeros(size(ballPose,1),1), 'ro-' );
 
 %% Functions
